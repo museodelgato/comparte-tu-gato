@@ -42,3 +42,8 @@ next-env.d.ts
 
 # fotos de demo
 uploads/
+
+# archivos de agentes IA (no subir al repo)
+CLAUDE.md
+AGENTS.md
+.claude/
