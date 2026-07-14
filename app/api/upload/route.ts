@@ -64,6 +64,13 @@ export async function POST(req: NextRequest) {
   const buf = Buffer.from(await foto.arrayBuffer());
   const nombre = `gato_${new Date().toISOString().replace(/[:.]/g, "-")}.jpg`;
 
+  // En producción el modo mock está prohibido: sin bucket configurado se
+  // responde error en vez de aparentar que la foto se guardó
+  if (!BUCKET && process.env.NODE_ENV === "production") {
+    console.error("[upload] S3_BUCKET no está configurado en producción");
+    return NextResponse.json({ status: "error" }, { status: 500 });
+  }
+
   if (s3 && rekognition && BUCKET) {
     // ── Modo AWS ──
     try {

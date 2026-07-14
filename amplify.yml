@@ -1,0 +1,19 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci --cache .npm --prefer-offline
+    build:
+      commands:
+        # Las variables de la consola de Amplify solo existen en build;
+        # se escriben a .env.production para que lleguen al runtime SSR
+        - env | grep -e S3_BUCKET -e MODERATION_MIN_CONFIDENCE >> .env.production || true
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - .npm/**/*
