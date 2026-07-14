@@ -8,7 +8,7 @@ frontend:
       commands:
         # Las variables de la consola de Amplify solo existen en build;
         # se escriben a .env.production para que lleguen al runtime SSR
-        - env | grep -e S3_BUCKET -e MODERATION_MIN_CONFIDENCE >> .env.production || true
+        - env | grep -e S3_BUCKET -e MODERATION_MIN_CONFIDENCE -e CAT_MIN_CONFIDENCE >> .env.production || true
         - npm run build
   artifacts:
     baseDirectory: .next

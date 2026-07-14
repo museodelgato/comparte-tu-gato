@@ -36,6 +36,11 @@ const COPY = {
     texto: "Nuestro guardián automático detectó contenido que no podemos mostrar en el museo. Intenta con otra foto de tu michi.",
     boton: "Probar con otra foto",
   },
+  singato: {
+    titulo: "Mmm… aquí no vemos un gato",
+    texto: "Nuestro detector no encontró ningún michi en la foto. Esta exhibición es solo de gatos — intenta con una donde tu gato salga clarito.",
+    boton: "Probar con otra foto",
+  },
   invalida: {
     titulo: "Esa foto no la pudimos leer",
     texto: "Intenta con otra desde tu galería o tu cámara.",
@@ -59,6 +64,7 @@ type Estado =
   | "subiendo"
   | "exito"
   | "rechazada"
+  | "singato"
   | "invalida"
   | "error"
   | "limite";
@@ -141,7 +147,10 @@ export default function Home() {
       if (xhr.status === 200) {
         try {
           const r = JSON.parse(xhr.responseText);
-          setEstado(r.status === "rejected" ? "rechazada" : "exito");
+          if (r.status === "ok") setEstado("exito");
+          else if (r.status === "rejected") setEstado("rechazada");
+          else if (r.status === "nocat") setEstado("singato");
+          else setEstado("error");
         } catch {
           setEstado("error");
         }
@@ -251,6 +260,15 @@ export default function Home() {
             <h1 className="text-3xl font-extrabold text-orange-600">{COPY.rechazada.titulo}</h1>
             <p className="text-lg leading-snug text-amber-900/80">{COPY.rechazada.texto}</p>
             <button className={botonPrimario} onClick={reiniciar}>{COPY.rechazada.boton}</button>
+          </>
+        )}
+
+        {estado === "singato" && (
+          <>
+            <div className="text-8xl" aria-hidden>🔎</div>
+            <h1 className="text-3xl font-extrabold text-orange-600">{COPY.singato.titulo}</h1>
+            <p className="text-lg leading-snug text-amber-900/80">{COPY.singato.texto}</p>
+            <button className={botonPrimario} onClick={reiniciar}>{COPY.singato.boton}</button>
           </>
         )}
 

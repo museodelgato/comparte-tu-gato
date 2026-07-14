@@ -5,6 +5,7 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import {
   RekognitionClient,
   DetectModerationLabelsCommand,
+  DetectLabelsCommand,
 } from "@aws-sdk/client-rekognition";
 
 // ─── Backend de subida ───────────────────────────────────────────────────────
@@ -20,6 +21,9 @@ import {
 const BUCKET = process.env.S3_BUCKET;
 // Umbral de confianza (0-100) para rechazar por moderación
 const MIN_CONFIANZA = Number(process.env.MODERATION_MIN_CONFIDENCE ?? 70);
+// Umbral de confianza (0-100) para exigir que en la foto haya un gato.
+// Poner 0 desactiva la verificación (acepta cualquier foto que pase moderación).
+const MIN_CONFIANZA_GATO = Number(process.env.CAT_MIN_CONFIDENCE ?? 60);
 const REGION = process.env.AWS_REGION ?? "us-east-2";
 
 const s3 = BUCKET ? new S3Client({ region: REGION }) : null;
@@ -58,9 +62,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ status: "invalid" }, { status: 413 });
   }
 
-  // Truco de demo en ambos modos: nombre con "rechazo" fuerza la pantalla de rechazo
+  // Trucos de demo en ambos modos: nombre con "rechazo" fuerza la pantalla de
+  // rechazo; nombre con "nogato" fuerza la pantalla de "no vemos un gato"
   if (foto.name.toLowerCase().includes("rechazo")) {
     return NextResponse.json({ status: "rejected" });
+  }
+  if (foto.name.toLowerCase().includes("nogato")) {
+    return NextResponse.json({ status: "nocat" });
   }
 
   const buf = Buffer.from(await foto.arrayBuffer());
@@ -89,6 +97,32 @@ export async function POST(req: NextRequest) {
           etiquetas.map((l) => `${l.Name} ${(l.Confidence ?? 0).toFixed(0)}%`).join(", ")
         );
         return NextResponse.json({ status: "rejected" });
+      }
+
+      // Verificación de gato: si Rekognition no ve un gato (o algo cuya
+      // categoría padre sea gato, p. ej. una raza), no entra a la exhibición
+      if (MIN_CONFIANZA_GATO > 0) {
+        const labels = await rekognition.send(
+          new DetectLabelsCommand({
+            Image: { Bytes: buf },
+            MinConfidence: MIN_CONFIANZA_GATO,
+            MaxLabels: 50,
+          })
+        );
+        const vistas = labels.Labels ?? [];
+        const hayGato = vistas.some(
+          (l) =>
+            l.Name === "Cat" ||
+            l.Name === "Kitten" ||
+            (l.Parents ?? []).some((p) => p.Name === "Cat")
+        );
+        if (!hayGato) {
+          console.warn(
+            "[gato] sin gato, se vio:",
+            vistas.slice(0, 8).map((l) => `${l.Name} ${(l.Confidence ?? 0).toFixed(0)}%`).join(", ")
+          );
+          return NextResponse.json({ status: "nocat" });
+        }
       }
 
       await s3.send(
