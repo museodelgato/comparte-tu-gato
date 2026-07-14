@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Comparte tu Gato — Museo del Gato
 
-## Getting Started
+Página web móvil de la estación **Comparte tu Gato** (Proyecto 3): el visitante
+escanea un QR en sala, sube la foto de su gato desde el celular, la imagen pasa
+por un filtro de contenido y llega a la computadora de la exhibición para
+TouchDesigner.
 
-First, run the development server:
+Este repo contiene la **página de subida con todos sus estados** y un backend
+de demostración. Sirve para revisar el flujo y los textos con diseño y con el
+museo antes de conectar la infraestructura real.
+
+## Correr
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abrir http://localhost:3000 (o desde el celular en la misma red:
+`http://<ip-de-la-mac>:3000`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Estados del flujo y cómo probarlos
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Estado | Cómo verlo |
+|---|---|
+| Bienvenida | pantalla inicial |
+| Confirmar (preview) | elegir cualquier foto |
+| Subiendo (progreso) | enviar la foto |
+| Éxito | enviar una foto normal |
+| **Rechazada por filtro** | subir un archivo cuyo nombre contenga `rechazo` (p. ej. `rechazo.jpg`) |
+| Foto inválida | subir un archivo que no sea imagen |
+| Sin conexión | apagar el servidor / modo avión y enviar |
+| Límite de subidas | subir 6 fotos seguidas (límite: 5 por IP cada 10 min) |
 
-## Learn More
+Todos los **textos** viven en el objeto `COPY` al inicio de
+[app/page.tsx](app/page.tsx) — es el mismo deck de contenido que se le pasó a
+la diseñadora, editable en un solo lugar.
 
-To learn more about Next.js, take a look at the following resources:
+## Modos del backend (`app/api/upload/route.ts`)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Modo AWS (producción)** — se activa si existe la variable `S3_BUCKET`:
+  1. Moderación real con **AWS Rekognition** (`DetectModerationLabels`); si
+     detecta contenido indebido (confianza ≥ `MODERATION_MIN_CONFIDENCE`,
+     default 70) responde `rejected` y la foto nunca se guarda.
+  2. Guardado en **S3** bajo `aprobadas/gato_<timestamp>.jpg` (la nomenclatura
+     final la definirá el programador de TouchDesigner).
+  - Credenciales: cadena estándar del SDK — `.env.local` en desarrollo (ver
+    `.env.local.example`), compute role de Amplify en producción.
+- **Modo mock (desarrollo sin credenciales)** — sin `S3_BUCKET`: guarda en
+  `uploads/` local y simula la moderación (rechaza nombres con `rechazo`).
+- En ambos modos: compresión en el dispositivo (lado máx. 1600 px, JPEG) y
+  límite anti-abuso por IP (en serverless es aproximado, por instancia).
+- **Fase 4 pendiente**: agente de descarga local en la computadora del museo
+  que baja `aprobadas/` del bucket al folder de TouchDesigner (no vive en este
+  repo).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploy en AWS Amplify Hosting
 
-## Deploy on Vercel
+1. Subir este repo a GitHub (cuenta `museodelgato`, remote con alias
+   `git@github-museodelgato:...`).
+2. Consola AWS → **Amplify → Create new app → GitHub** → autorizar la GitHub
+   App de Amplify solo para este repo → elegir repo y branch `main` (detecta
+   Next.js solo).
+3. En **Advanced settings**, agregar la variable de entorno `S3_BUCKET` con el
+   nombre del bucket. **No** configurar `AWS_ACCESS_KEY_ID`/`AWS_SECRET...`
+   ahí — los prefijos `AWS_` están reservados; el acceso va por rol.
+4. Tras el primer deploy: **App settings → IAM roles → Compute role** → crear
+   o asignar un rol con `AmazonS3FullAccess` + `AmazonRekognitionReadOnlyAccess`
+   → redeploy.
+5. La URL `https://main.<id>.amplifyapp.com` es la que va al código QR (después
+   se puede poner dominio propio en App settings → Domain management).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Notas para diseño
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Mobile-first (se abre desde un QR); en desktop se centra en una columna.
+- Fuente: Baloo 2 (la del museo). Paleta provisional naranja/crema — se
+  sustituye por el arte final de la diseñadora, igual que los emojis 😺 que hoy
+  hacen de ilustración placeholder.
