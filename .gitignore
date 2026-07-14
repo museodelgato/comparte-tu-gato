@@ -50,6 +50,7 @@ AGENTS.md
 
 # agente local
 agente-local/.env
+!agente-local/.env.example
 agente-local/estado.json
 agente-local/fotos_td/
 agente-local/node_modules/
