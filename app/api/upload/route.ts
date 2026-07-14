@@ -49,7 +49,9 @@ export async function POST(req: NextRequest) {
   }
 
   const foto = form.get("photo");
-  if (!(foto instanceof File) || !foto.type.startsWith("image/")) {
+  // Solo JPEG: la página siempre convierte a JPEG en el dispositivo (canvas),
+  // así se garantiza que a la carpeta de TouchDesigner lleguen .jpg reales
+  if (!(foto instanceof File) || foto.type !== "image/jpeg") {
     return NextResponse.json({ status: "invalid" }, { status: 400 });
   }
   if (foto.size > MAX_BYTES) {

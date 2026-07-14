@@ -47,3 +47,8 @@ uploads/
 CLAUDE.md
 AGENTS.md
 .claude/
+
+# agente local
+agente-local/.env
+agente-local/estado.json
+agente-local/fotos_td/

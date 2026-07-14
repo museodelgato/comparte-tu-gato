@@ -63,8 +63,10 @@ type Estado =
   | "error"
   | "limite";
 
-// Reduce la foto en el dispositivo antes de subirla (lado más largo ≤ 1600 px).
-async function comprimir(archivo: File): Promise<Blob> {
+// Convierte la foto a JPEG y la reduce en el dispositivo (lado más largo ≤ 1600 px).
+// Si el navegador no puede decodificarla (formato raro), regresa null y se
+// rechaza: al folder de TouchDesigner solo pueden llegar JPG de verdad.
+async function comprimir(archivo: File): Promise<Blob | null> {
   try {
     let bitmap: ImageBitmap;
     try {
@@ -78,15 +80,14 @@ async function comprimir(archivo: File): Promise<Blob> {
     canvas.width = Math.round(bitmap.width * escala);
     canvas.height = Math.round(bitmap.height * escala);
     const ctx = canvas.getContext("2d");
-    if (!ctx) return archivo;
+    if (!ctx) return null;
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close();
-    const blob = await new Promise<Blob | null>((res) =>
+    return await new Promise<Blob | null>((res) =>
       canvas.toBlob(res, "image/jpeg", 0.82)
     );
-    return blob ?? archivo;
   } catch {
-    return archivo; // si el navegador no puede procesarla, se envía original
+    return null;
   }
 }
 
@@ -122,6 +123,11 @@ export default function Home() {
     lentoTimer.current = setTimeout(() => setLento(true), 5000);
 
     const blob = await comprimir(archivo);
+    if (!blob) {
+      if (lentoTimer.current) clearTimeout(lentoTimer.current);
+      setEstado("invalida");
+      return;
+    }
     const form = new FormData();
     form.append("photo", blob, archivo.name);
 

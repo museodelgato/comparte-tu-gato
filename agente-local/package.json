@@ -1,0 +1,13 @@
+{
+  "name": "agente-descarga-comparte-tu-gato",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Baja las fotos aprobadas de S3 a la carpeta de TouchDesigner como gato_001..999.jpg (buffer circular)",
+  "scripts": {
+    "start": "node --env-file=.env descarga.js",
+    "una-vez": "node --env-file=.env descarga.js --una-vez"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.750.0"
+  }
+}
